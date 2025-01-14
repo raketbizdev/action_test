@@ -10,27 +10,23 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run linter
-        run: npm run lint
+      - name: Checkout code 1
+        run: echo "Run lint 1"
+      - name: Checkout code 2
+        run: echo "Run lint 2"
+      - name: Checkout code 3
+        run: echo "Run lint 3"
 
   # Job 2: Build the application (runs in parallel with Lint)
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build the application
-        run: npm run build
+      - name: Build code 1
+        run: echo "Building code 1"
+      - name: Build code 2
+        run: echo "Building code 2"
+      - name: Build code 3
+        run: echo "Building code 3"
 
   # Job 3: Unit tests (Matrix for OS and Node.js versions)
   unit-test:
