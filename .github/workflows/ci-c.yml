@@ -1,0 +1,34 @@
+name: Mixed Jobs Example
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Code
+        run: echo "Building the code"
+
+  test1:
+    runs-on: ubuntu-latest
+    needs: build  # Run after build
+    steps:
+      - name: Run Test 1
+        run: echo "Running Test 1"
+
+  test2:
+    runs-on: ubuntu-latest
+    needs: build  # Run after build
+    steps:
+      - name: Run Test 2
+        run: echo "Running Test 2"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test1, test2]  # Run after test1 and test2
+    steps:
+      - name: Deploy Application
+        run: echo "Deploying the application"
