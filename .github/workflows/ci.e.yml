@@ -40,7 +40,7 @@ jobs:
   # Job 3: Unit tests (Matrix for OS and Node.js versions)
   unit-test:
     runs-on: ${{ matrix.os }}
-    needs: [lint, build]
+    needs: [lint, build, code-review]
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -63,7 +63,7 @@ jobs:
   # Job 4: Integration tests (Matrix for OS and Node.js versions)
   integration-test:
     runs-on: ${{ matrix.os }}
-    needs: [lint, build]
+    needs: [lint, build, code-review]
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -86,7 +86,7 @@ jobs:
   # Job 5: API tests (Matrix for OS and Node.js versions)
   api-test:
     runs-on: ${{ matrix.os }}
-    needs: [lint, build]
+    needs: [lint, build, code-review]
     strategy:
       matrix:
         os: [ubuntu-latest]
