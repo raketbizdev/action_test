@@ -27,6 +27,15 @@ jobs:
         run: echo "Building code 2"
       - name: Build code 3
         run: echo "Building code 3"
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code Review
+        run: echo "Code Review 1"
+      - name: Build Review 2
+        run: echo "Code Review 2"
+      - name: Build Review 3
+        run: echo "Code Review 3"
 
   # Job 3: Unit tests (Matrix for OS and Node.js versions)
   unit-test:
