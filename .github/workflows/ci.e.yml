@@ -16,6 +16,24 @@ jobs:
         run: echo "Run lint 2"
       - name: Checkout code 3
         run: echo "Run lint 3"
+  package-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: package-check 1
+        run: echo "Run lint 1"
+      - name: package-check 2
+        run: echo "Run lint 2"
+      - name: package-check 3
+        run: echo "Run lint 3"
+  dependabot-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: dependabot-check 1
+        run: echo "Run lint 1"
+      - name: dependabot-check 2
+        run: echo "Run lint 2"
+      - name: dependabot-check 3
+        run: echo "Run lint 3"
 
   # Job 2: Build the application (runs in parallel with Lint)
   build:
