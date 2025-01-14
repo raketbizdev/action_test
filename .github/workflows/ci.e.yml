@@ -32,13 +32,13 @@ jobs:
       - name: Build the application
         run: npm run build
 
-  # Job 3: Run tests (uses matrix for parallel testing on different configurations)
-  test:
+  # Job 3: Unit tests (Matrix for OS and Node.js versions)
+  unit-test:
     runs-on: ${{ matrix.os }}
-    needs: [lint, build]  # Run after Lint and Build
+    needs: [lint, build]
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
         node-version: [12, 14, 16]
     steps:
       - name: Checkout code
@@ -52,13 +52,59 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run tests
-        run: npm test
+      - name: Run unit tests
+        run: npm run test:unit
 
-  # Job 4: Deploy (runs sequentially after tests pass)
+  # Job 4: Integration tests (Matrix for OS and Node.js versions)
+  integration-test:
+    runs-on: ${{ matrix.os }}
+    needs: [lint, build]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node-version: [14, 16]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+  # Job 5: API tests (Matrix for OS and Node.js versions)
+  api-test:
+    runs-on: ${{ matrix.os }}
+    needs: [lint, build]
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [16]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run API tests
+        run: npm run test:api
+
+  # Job 6: Deploy (runs sequentially after all tests pass)
   deploy:
     runs-on: ubuntu-latest
-    needs: test  # Run after all test matrix jobs complete
+    needs: [unit-test, integration-test, api-test]  # Run after all test jobs complete
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

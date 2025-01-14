@@ -1,0 +1,208 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: P1 - FEND Development CI/CD
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "dev" ]
+    paths-ignore:
+      - '**.md'
+      - '.terraform/**'
+
+
+
+jobs:
+  upload-s3-assets:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+          fetch-depth: 100
+
+    - name: Upload Assets to S3 p1-mediaserver
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      run: |
+        aws s3 sync ./src/assets s3://p1-mediaserver/assets
+
+
+# Test Prosperna1 - HyperReact Frontend
+  testing-stage:
+    runs-on: ubuntu-latest
+    needs: [upload-s3-assets]
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+          fetch-depth: 100
+          
+        
+    - name: Retrived env file from AWS Secret Manager
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      run: |
+        aws secretsmanager get-secret-value --secret-id ${{ secrets.SECRET_DEV_ENV }} --query SecretString --output text > .env
+    
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: npm install -f
+    - run: npm run test-all
+    
+    - name: Cache Build
+      uses: actions/cache@v2
+      id: cache-build
+      with:
+        path: ./*
+        key: cachev1-${{ github.sha }}
+
+
+# Build Prosperna1 - HyperReact Frontend
+  build-stage:
+    runs-on: ubuntu-latest
+    needs: [testing-stage]
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+          fetch-depth: 100
+    
+    - name: Restore Cache Build
+      uses: actions/cache@v2
+      id: restore-build
+      with:
+        path: ./*
+        key: cachev1-${{ github.sha }}
+        
+    - name: Retrived env file from AWS Secret Manager
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      run: |
+        aws secretsmanager get-secret-value --secret-id ${{ secrets.SECRET_DEV_ENV }} --query SecretString --output text > .env
+      
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    #- run: npm install -f
+    #- run: yarn upgrade --latest
+    - name: Build the assets
+      run: |
+        export NODE_OPTIONS="--max_old_space_size=4096"
+        CI= yarn build
+    #- run: yarn build
+    
+    - name: Cache Build
+      uses: actions/cache@v2
+      id: cache-build
+      with:
+        path: ./*
+        key: cachev2-${{ github.sha }}
+
+  #  - name: Send Status Alert to Lark
+  #    if: failure()
+  #    run: |
+  #      curl -X POST -H "Content-Type: application/json" -d '{"msg_type":"text","content":{"text":"MyChat Web ${{ github.repository }} Repository --- The ${{ github.job }} Job in ${{ github.workflow }} workflow has ${{ job.status }}"}}' ${{ secrets.LARK_WEBHOOK }}
+
+
+# Deploy to AWS ECS Fargate
+  deploy-ecs:
+    runs-on: ubuntu-latest
+    needs: [build-stage]
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+          fetch-depth: 100
+          
+    - name: Restore Cache Build
+      uses: actions/cache@v2
+      id: restore-build
+      with:
+        path: ./*
+        key: cachev2-${{ github.sha }}
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build & tag docker image
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: prodev-image
+        IMAGE_TAG: build-${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --target main .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+    
+    - name: Push image to Amazon ECR
+      id: push-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: prodev-image
+        IMAGE_TAG: build-${{ github.sha }}
+      run: |
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - name: Download task definition
+      run: aws ecs describe-task-definition --task-definition prodev-task --query taskDefinition > task-definition.json
+
+# Container Definition
+    - name: Render Amazon ECS task definition for Nginx Reverse Proxy container
+      id: render-web-container
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name: nginx-fend
+        image: ${{ steps.push-image.outputs.image }}
+
+
+# Deploy to ECS Fargate
+    - name: Deploy Amazon ECS task definition
+      id: deploy-task-def
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      with:
+        task-definition: ${{ steps.render-web-container.outputs.task-definition }}
+        service: P1-Dev-Service
+        cluster: P1-Dev
+
+   # - name: Send Status Alert to Lark
+   #   if: always()
+   #   run: |
+   #     curl -X POST -H "Content-Type: application/json" -d '{"msg_type":"text","content":{"text":"MyChat Web ${{ github.repository }} Repository --- The ${{ github.job }} Job in ${{ github.workflow }} workflow has ${{ job.status }}"}}' ${{ secrets.LARK_WEBHOOK }}
