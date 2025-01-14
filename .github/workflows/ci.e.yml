@@ -19,6 +19,7 @@ jobs:
 
   # Job 2: Build the application (runs in parallel with Lint)
   build:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Build code 1
