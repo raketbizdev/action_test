@@ -48,6 +48,7 @@ jobs:
   # Job 2: Build the application (runs in parallel with Lint)
   build:
     runs-on: ubuntu-latest
+    needs: [lint, package-check, dependabot-check]
     steps:
       - name: Build code 1
         run: echo "Building code 1"
@@ -57,7 +58,7 @@ jobs:
         run: echo "Building code 3"
   code-review:
     runs-on: ubuntu-latest
-    needs: [package-check, dependabot-check]
+    needs: [build]
     steps:
       - name: Code Review
         run: echo "Code Review 1"
