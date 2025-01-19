@@ -1,0 +1,30 @@
+name: New Martix Sample
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Code
+        run: echo "Building the code"
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      matrix:
+        test-case: [test1, test2, test3]  # Dynamically creates jobs
+    steps:
+      - name: Run Test ${{ matrix.test-case }}
+        run: echo "Running ${{ matrix.test-case }}"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test  # Waits for all matrix tests to finish
+    steps:
+      - name: Deploy Application
+        run: echo "Deploying the application"
