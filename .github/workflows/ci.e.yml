@@ -21,6 +21,7 @@ jobs:
         run: echo "Run lint 3"
   package-check:
     runs-on: ${{ matrix.os }}
+    needs: lint
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -33,6 +34,7 @@ jobs:
         run: echo "Run lint 3"
   dependabot-check:
     runs-on: ${{ matrix.os }}
+    needs: package-check
     strategy:
       matrix:
         os: [ubuntu-latest]
