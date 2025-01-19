@@ -37,12 +37,23 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-      - name: dependabot-check 1
-        run: echo "Run lint 1"
-      - name: dependabot-check 2
-        run: echo "Run lint 2"
-      - name: dependabot-check 3
-        run: echo "Run lint 3"
+      # Step 1: Checkout code
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'  # Specify the Node.js version
+
+      # Step 3: Install dependencies
+      - name: Install Dependencies
+        run: npm ci  # Use 'npm ci' for clean installation
+
+      # Step 4: Run tests
+      - name: Run Tests for Dependabot Updates
+        run: npm test  # Validate changes introduced by Dependabot
 
   # Job 2: Build the application (runs in parallel with Lint)
   build:
