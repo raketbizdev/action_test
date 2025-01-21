@@ -146,6 +146,28 @@ jobs:
       - name: Run API tests
         run: npm run test:api
 
+  regression-test:
+    runs-on: ${{ matrix.os }}
+    needs: [lint, build, code-review]
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [18]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run API tests
+        run: npm run test:api
+
   # Job 6: Deploy (runs sequentially after all tests pass)
   deploy:
     runs-on: ubuntu-latest
