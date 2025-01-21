@@ -147,7 +147,7 @@ jobs:
         run: npm run test:api
   regression-test:
     runs-on: ${{ matrix.os }}
-    needs: [build]
+    needs: [lint, build, code-review]
     strategy:
       matrix:
         os: [ubuntu-latest]
