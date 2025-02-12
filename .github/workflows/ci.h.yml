@@ -1,4 +1,4 @@
-name: CI/CD Prosperna Pipeline
+name: Complex CI/CD Workflow
 
 on:
   push:
@@ -9,74 +9,110 @@ on:
       - dev
 
 jobs:
-  pre-checks:
+  lint-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-      
-      - name: Lint Test
+      - name: Run Lint Tests
         run: make lint
-      
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
       - name: Dependency Check
         run: make dependency-check
-      
-      - name: Vulnerability Check
-        run: make vuln-check
-      
-      - name: SAST Scan
-        run: make sast-scan
-      
-      - name: Upload S3 Assets
-        run: make upload-assets
-      
-      - name: Code Review
-        run: make code-review
-      
-      - name: Unit Test
-        run: make test
 
-  test:
+  vulnerability-check:
     runs-on: ubuntu-latest
-    needs: pre-checks
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-      
+      - name: Vulnerability Check
+        run: make vuln-check
+
+  sasts-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: SAST Scan
+        run: make sast-scan
+
+  upload-s3-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Upload S3 Assets
+        run: make upload-assets
+
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Code Review
+        run: make code-review
+
+  unit-test:
+    runs-on: ubuntu-latest
+    needs: [lint-test, dependency-check, vulnerability-check, sasts-scan, upload-s3-assets, code-review]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Run Unit Tests
+        run: make test
+
+  api-test:
+    runs-on: ubuntu-latest
+    needs: [lint-test, dependency-check, vulnerability-check, sasts-scan, upload-s3-assets, code-review, unit-test]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
       - name: Run API Tests
         run: make api-test
-      
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: [api-test]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
       - name: Run Integration Tests
         run: make integration-test
 
   build:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [integration-test]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-      
       - name: Build Application
         run: make build
-      
+
+  artifact:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
       - name: Save Build Artifact
         uses: actions/upload-artifact@v3
         with:
           name: build-artifact
           path: build/
 
-  deploy:
+  deploy-ecs:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [artifact]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-      
       - name: Download Build Artifact
         uses: actions/download-artifact@v3
         with:
           name: build-artifact
           path: build/
-      
       - name: Deploy to AWS ECS
         run: make deploy
