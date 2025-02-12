@@ -10,7 +10,10 @@ on:
 
 jobs:
   lint-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -18,7 +21,10 @@ jobs:
         run: make lint
 
   dependency-check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -26,7 +32,10 @@ jobs:
         run: make dependency-check
 
   vulnerability-check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -34,7 +43,10 @@ jobs:
         run: make vuln-check
 
   sasts-scan:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -42,7 +54,10 @@ jobs:
         run: make sast-scan
 
   upload-s3-assets:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -50,7 +65,10 @@ jobs:
         run: make upload-assets
 
   code-review:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -58,7 +76,10 @@ jobs:
         run: make code-review
 
   unit-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -66,7 +87,10 @@ jobs:
         run: make test
 
   api-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     needs: [lint-test, dependency-check, vulnerability-check, sasts-scan, upload-s3-assets, code-review, unit-test]
     steps:
       - name: Checkout Repository
@@ -75,7 +99,10 @@ jobs:
         run: make api-test
 
   integration-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     needs: [lint-test, dependency-check, vulnerability-check, sasts-scan, upload-s3-assets, code-review, unit-test]
     steps:
       - name: Checkout Repository
@@ -84,7 +111,10 @@ jobs:
         run: make integration-test
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     needs: [integration-test, api-test]
     steps:
       - name: Checkout Repository
@@ -93,7 +123,10 @@ jobs:
         run: make build
 
   artifact:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     needs: [build]
     steps:
       - name: Save Build Artifact
@@ -103,7 +136,10 @@ jobs:
           path: build/
 
   deploy-ecs:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
     needs: [artifact]
     steps:
       - name: Checkout Repository
