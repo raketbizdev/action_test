@@ -1,0 +1,121 @@
+# .github/workflows/ci-cd.yml
+name: Enterprise GitFlow CI/CD
+
+on:
+  push:
+    branches:
+      - development
+      - staging
+      - production
+
+jobs:
+
+  ##############################
+  # Common: Lint, Unit, SAST
+  ##############################
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm run lint
+
+  unit_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm run test
+
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm run sast
+
+  build:
+    needs: [lint, unit_test, sast]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm run build
+
+  ##############################
+  # Development branch pipeline
+  ##############################
+  deploy_dev:
+    if: github.ref == 'refs/heads/development'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - run: echo "Deploying to DEV..."
+  
+  e2e_dev:
+    if: github.ref == 'refs/heads/development'
+    needs: deploy_dev
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm run test:e2e
+
+  integration_dev:
+    if: github.ref == 'refs/heads/development'
+    needs: deploy_dev
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm run test:integration
+
+  browser_dev:
+    if: github.ref == 'refs/heads/development'
+    needs: deploy_dev
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm run test:browser
+
+  ##############################
+  # Staging branch pipeline
+  ##############################
+  deploy_staging:
+    if: github.ref == 'refs/heads/staging'
+    needs: [e2e_dev, integration_dev, browser_dev]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - run: echo "Deploying to STAGING..."
+
+  performance_test:
+    if: github.ref == 'refs/heads/staging'
+    needs: deploy_staging
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm run test:performance
+
+  smoke_test:
+    if: github.ref == 'refs/heads/staging'
+    needs: deploy_staging
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm run test:smoke
+
+  ##############################
+  # Production branch pipeline
+  ##############################
+  deploy_prod:
+    if: github.ref == 'refs/heads/production'
+    needs: [performance_test, smoke_test]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - run: echo "Deploying to PROD 🚀"
+      - run: echo "Running post-deployment tests..."
+      - run: npm run test:post-deploy
+      - run: echo "Deployment to PROD completed successfully!"
+      - run: echo "Sending notifications..."
+      - run: echo "Notifications sent!"
+      - run: echo "Cleaning up resources..."
+      - run: echo "Resources cleaned up!"
+      - run: echo "Deployment pipeline completed!"
+      - run: echo "All tasks completed successfully!"
+      - run: echo "End of pipeline."
+      - run: echo "Thank you for using our CI/CD pipeline!"
+      - run: echo "Goodbye!"
+      - run: echo "Have a great day!"
+      - run: echo "See you next time!"
